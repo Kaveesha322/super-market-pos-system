@@ -18,13 +18,13 @@ const stockRoutes     = require('./routes/stock');
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// ── Middleware ──────────────────────────────────────────────────────────────
 app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Ensure DB is connected on every request (safe for serverless cold starts)
+// ── DB connect middleware (serverless-safe lazy connect) ────────────────────
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -34,7 +34,7 @@ app.use(async (req, res, next) => {
   }
 });
 
-// API Routes
+// ── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/auth',       authRoutes);
 app.use('/api/products',   productRoutes);
 app.use('/api/sales',      salesRoutes);
@@ -49,13 +49,22 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'ok', db: 'mongodb', message: 'SuperMarket POS API running', timestamp: new Date() })
 );
 
-// Error handler
+// ── Serve built frontend (production) ──────────────────────────────────────
+const distPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(distPath));
+
+// SPA catch-all: send index.html for any non-API route (React Router handles it)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+// ── Error handler ───────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// Start local dev server (not on Vercel)
+// ── Local dev server ────────────────────────────────────────────────────────
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     app.listen(PORT, () => {
