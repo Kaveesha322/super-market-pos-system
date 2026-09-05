@@ -49,22 +49,13 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'ok', db: 'mongodb', message: 'SuperMarket POS API running', timestamp: new Date() })
 );
 
-// ── Serve built frontend (production) ──────────────────────────────────────
-const distPath = path.join(__dirname, '../../frontend/dist');
-app.use(express.static(distPath));
-
-// SPA catch-all: send index.html for any non-API route (React Router handles it)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
-
 // ── Error handler ───────────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// ── Local dev server ────────────────────────────────────────────────────────
+// ── Local dev server (not on Vercel) ────────────────────────────────────────
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     app.listen(PORT, () => {
