@@ -24,10 +24,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-}
+// Ensure DB is connected before every request (safe for serverless cold starts)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(503).json({ error: 'Database unavailable', message: err.message });
+  }
+});
 
 // API Routes
 app.use('/api/auth',       authRoutes);
@@ -44,7 +49,9 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'ok', db: 'mongodb', message: 'SuperMarket POS API running', timestamp: new Date() })
 );
 
-if (process.env.NODE_ENV === 'production') {
+// Serve frontend in production (local only — Vercel serves frontend separately)
+if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
   app.get('*', (req, res) =>
     res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'))
   );
@@ -55,14 +62,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// Connect to MongoDB, then start server
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`\n🚀 Super Lanka Mart POS Server running on port ${PORT}`);
-    console.log(`🍃 Database: MongoDB`);
-    console.log(`📊 API: http://localhost:${PORT}/api`);
-    console.log(`🏪 Store: ${process.env.STORE_NAME || 'Super Lanka Mart'}\n`);
+// Start server when running locally (not on Vercel)
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    app.listen(PORT, () => {
+      console.log(`\n🚀 Super Lanka Mart POS Server running on port ${PORT}`);
+      console.log(`🍃 Database: MongoDB`);
+      console.log(`📊 API: http://localhost:${PORT}/api`);
+      console.log(`🏪 Store: ${process.env.STORE_NAME || 'Super Lanka Mart'}\n`);
+    });
   });
-});
+}
 
 module.exports = app;

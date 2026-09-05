@@ -2,25 +2,31 @@ const mongoose = require('mongoose');
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/supermarket_pos';
 
-let isConnected = false;
+let connectionPromise = null;
 
 async function connectDB() {
-  if (isConnected) return;
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
+  // Return existing connection if already connected
+  if (mongoose.connection.readyState === 1) return;
+
+  // Reuse in-flight connection promise (important for serverless concurrent requests)
+  if (!connectionPromise) {
+    connectionPromise = mongoose.connect(MONGODB_URI, {
+      serverSelectionTimeoutMS: 10000,
+    }).then(() => {
+      console.log(`✅ MongoDB connected`);
+      connectionPromise = null;
+    }).catch((err) => {
+      console.error('❌ MongoDB connection failed:', err.message);
+      connectionPromise = null;
+      throw err; // Let the caller handle it — no process.exit on serverless
     });
-    isConnected = true;
-    console.log(`✅ MongoDB connected: ${MONGODB_URI}`);
-  } catch (err) {
-    console.error('❌ MongoDB connection failed:', err.message);
-    process.exit(1);
   }
+
+  return connectionPromise;
 }
 
 mongoose.connection.on('disconnected', () => {
   console.log('⚠️  MongoDB disconnected');
-  isConnected = false;
 });
 
 mongoose.connection.on('error', (err) => {
