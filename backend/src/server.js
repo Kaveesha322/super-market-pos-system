@@ -24,7 +24,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Ensure DB is connected before every request (safe for serverless cold starts)
+// Ensure DB is connected on every request (safe for serverless cold starts)
 app.use(async (req, res, next) => {
   try {
     await connectDB();
@@ -49,20 +49,13 @@ app.get('/api/health', (req, res) =>
   res.json({ status: 'ok', db: 'mongodb', message: 'SuperMarket POS API running', timestamp: new Date() })
 );
 
-// Serve frontend in production (local only — Vercel serves frontend separately)
-if (process.env.NODE_ENV === 'production' && !process.env.VERCEL) {
-  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
-  app.get('*', (req, res) =>
-    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'))
-  );
-}
-
+// Error handler
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal Server Error', message: err.message });
 });
 
-// Start server when running locally (not on Vercel)
+// Start local dev server (not on Vercel)
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     app.listen(PORT, () => {
