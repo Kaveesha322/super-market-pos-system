@@ -21,7 +21,7 @@ function PrivateRoute({ children, roles }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Toaster position="top-right" toastOptions={{ duration: 3000, style: { fontSize: '14px' } }} />
       <Routes>
         <Route path="/login" element={<LoginPage />} />

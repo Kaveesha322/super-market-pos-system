@@ -14,7 +14,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 || err.response?.status === 403) {
+    const isLoginRequest = err.config?.url?.includes('/auth/login');
+    if (!isLoginRequest && (err.response?.status === 401 || err.response?.status === 403)) {
       localStorage.removeItem('pos_token');
       localStorage.removeItem('pos_user');
       window.location.href = '/login';
